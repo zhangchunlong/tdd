@@ -1,3 +1,9 @@
 .class
 .idea
 target
+args/.idea
+args/target
+runit/.idea
+runit/target
+testing-application/.idea
+testing-application/target
