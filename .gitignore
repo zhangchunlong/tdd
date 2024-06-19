@@ -7,3 +7,5 @@ runit/.idea
 runit/target
 testing-application/.idea
 testing-application/target
+args.other/.idea
+args.other/target
