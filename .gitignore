@@ -9,3 +9,5 @@ testing-application/.idea
 testing-application/target
 args.other/.idea
 args.other/target
+args.mockist/.idea
+args.mockist/target
