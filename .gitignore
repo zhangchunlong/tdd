@@ -11,3 +11,7 @@ args.other/.idea
 args.other/target
 args.mockist/.idea
 args.mockist/target
+di.container/.idea
+di.container/target
+di.explained/.idea
+di.explained/target
