@@ -46,6 +46,7 @@ public class ContainerTest {
                 assertNotNull(instance);
                 assertTrue(instance instanceof ComponentWithDefaultConstructor);
             }
+
             @Test
             public void should_bind_type_to_a_class_with_inject_constructor() {
                 config.bind(Component.class, ComponentWithInjectConstructor.class);
@@ -56,6 +57,7 @@ public class ContainerTest {
                 assertNotNull(instance);
                 assertSame(dependency, ((ComponentWithInjectConstructor) instance).getDependency());
             }
+
             @Test
             public void should_bind_type_to_a_class_with_transitive_dependencies() {
                 config.bind(Component.class, ComponentWithInjectConstructor.class);
@@ -99,7 +101,7 @@ public class ContainerTest {
                 config.bind(Component.class, ComponentWithInjectConstructor.class);
                 config.bind(Dependency.class, DependencyWithInjectConstructor.class);
 
-                DependencyNotFoundException exception = assertThrows(DependencyNotFoundException.class, () -> config.getContext().get(Component.class));
+                DependencyNotFoundException exception = assertThrows(DependencyNotFoundException.class, () -> config.getContext());
 
                 assertEquals(String.class, exception.getDependency());
                 assertEquals(Dependency.class, exception.getComponent());
@@ -111,7 +113,7 @@ public class ContainerTest {
                 config.bind(Component.class,ComponentWithInjectConstructor.class);
                 config.bind(Dependency.class, DependencyDependedOnComponent.class);
 
-                CyclicDenpendenciesFoundException exception = assertThrows(CyclicDenpendenciesFoundException.class, () -> config.getContext().get(Component.class));
+                CyclicDenpendenciesFoundException exception = assertThrows(CyclicDenpendenciesFoundException.class, () -> config.getContext());
 
                 Set<Class<?>> classes = Sets.newSet(exception.getComponents());
 
@@ -126,7 +128,7 @@ public class ContainerTest {
                 config.bind(Dependency.class, DependencyDependedOnAnotherDependency.class);
                 config.bind(AnotherDependency.class, AnotherDependencyDependedOnComponent.class);
 
-                CyclicDenpendenciesFoundException exception = assertThrows(CyclicDenpendenciesFoundException.class, () -> config.getContext().get(Component.class));
+                CyclicDenpendenciesFoundException exception = assertThrows(CyclicDenpendenciesFoundException.class, () -> config.getContext());
 
                 List<Class<?>> components = Arrays.asList(exception.getComponents());
 
