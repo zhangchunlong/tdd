@@ -44,7 +44,6 @@ public class ContainerTest {
                 DependencyNotFoundException exception = assertThrows(DependencyNotFoundException.class, () -> config.getContext());
                 assertEquals(Dependency.class, exception.getDependency());
                 assertEquals(Component.class, exception.getComponent());
-
             }
 
             @Test
@@ -99,11 +98,6 @@ interface Dependency {
 interface AnotherDependency {
 }
 
-class ComponentWithDefaultConstructor implements Component{
-    public ComponentWithDefaultConstructor() {
-    }
-}
-
 class ComponentWithInjectConstructor implements Component {
     private Dependency dependency;
 
@@ -114,34 +108,6 @@ class ComponentWithInjectConstructor implements Component {
     @Inject
     public ComponentWithInjectConstructor(Dependency dependency) {
         this.dependency = dependency;
-    }
-}
-
-class ComponentWithMultiInjectConstructors implements Component {
-    @Inject
-    public ComponentWithMultiInjectConstructors(String name, Double value) {
-    }
-
-    @Inject
-    public ComponentWithMultiInjectConstructors(String name) {
-    }
-}
-
-class ComponentWithNoInjectConstructorNorDefaultConstructor implements Component {
-    public ComponentWithNoInjectConstructorNorDefaultConstructor(String name) {
-    }
-}
-
-class DependencyWithInjectConstructor implements Dependency {
-    private String dependency;
-
-    @Inject
-    public DependencyWithInjectConstructor(String dependency) {
-        this.dependency = dependency;
-    }
-
-    public String getDependency() {
-        return dependency;
     }
 }
 
