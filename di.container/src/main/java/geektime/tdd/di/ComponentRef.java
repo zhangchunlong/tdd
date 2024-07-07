@@ -6,6 +6,11 @@ import java.lang.reflect.Type;
 import java.util.Objects;
 
 public class ComponentRef<ComponentType> {
+    public ComponentRef(Annotation qualifier) {
+        Type type = ((ParameterizedType) getClass().getGenericSuperclass()).getActualTypeArguments()[0];
+        init(type, qualifier);
+    }
+
     public static <ComponentType> ComponentRef<ComponentType> of(Class<ComponentType> component) {
         return new ComponentRef(component, null);
     }
@@ -30,8 +35,7 @@ public class ComponentRef<ComponentType> {
     }
 
     protected ComponentRef() {
-        Type type = ((ParameterizedType) getClass().getGenericSuperclass()).getActualTypeArguments()[0];
-        init(type, null);
+        this(null);
     }
 
     private void init(Type type, Annotation qualifier) {
@@ -44,10 +48,6 @@ public class ComponentRef<ComponentType> {
 
     public Type getContainer() {
         return container;
-    }
-
-    public Class<?> getComponentType() {
-        return component.type();
     }
 
     public boolean isContainer() {
