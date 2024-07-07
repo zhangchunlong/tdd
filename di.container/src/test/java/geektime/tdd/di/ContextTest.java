@@ -406,7 +406,7 @@ class ContextTest {
                 public InjectConstructor(@Skywalker Dependency dependency) {
                 }
             }
-            //TODO check cyclic dependencies with qualifier
+
             //A -> @Skywalker A -> @Named A(instance)
             static class SkywalkerDependency implements Dependency {
                 @Inject
