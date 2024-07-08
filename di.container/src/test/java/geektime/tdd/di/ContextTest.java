@@ -3,7 +3,6 @@ package geektime.tdd.di;
 import geektime.tdd.di.InjectionTest.ConstructorInjection.Injection.InjectorConstructor;
 import jakarta.inject.Inject;
 import jakarta.inject.Provider;
-import jakarta.inject.Scope;
 import jakarta.inject.Singleton;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Named;
@@ -14,14 +13,10 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.internal.util.collections.Sets;
 
-import java.lang.annotation.Annotation;
-import java.lang.annotation.Documented;
-import java.lang.annotation.Retention;
 import java.util.*;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
-import static java.lang.annotation.RetentionPolicy.RUNTIME;
 import static org.junit.jupiter.api.Assertions.*;
 
 @Nested
@@ -229,6 +224,26 @@ class ContextTest {
                 List<NotSingleton> instances = IntStream.range(0, 5).mapToObj(i -> context.get(ComponentRef.of(NotSingleton.class)).get()).toList();
 
                 assertEquals(PooledProvider.MAX, new HashSet<>(instances).size());
+            }
+
+            @Test
+            public void should_throw_exception_if_multi_scope_provided() {
+                assertThrows(IllegalComponentException.class, () -> config.bind(NotSingleton.class, NotSingleton.class, new SingletonLiteral(), new PooledLiteral()));
+            }
+
+            @Singleton
+            @Pooled
+            static class MultiScopeAnnotated {
+            }
+
+            @Test
+            public void should_throw_exception_if_multi_scope_annotated() {
+                assertThrows(IllegalComponentException.class, () -> config.bind(MultiScopeAnnotated.class, MultiScopeAnnotated.class));
+            }
+
+            @Test
+            public void should_throw_exception_if_scope_undefined() {
+                assertThrows(IllegalComponentException.class, () -> config.bind(NotSingleton.class, NotSingleton.class, new PooledLiteral()));
             }
 
             @Nested
@@ -566,7 +581,8 @@ class ContextTest {
 
             static class NotCyclicInjectField implements Dependency {
                 @Inject
-                @Skywalker Dependency dependency;
+                @Skywalker
+                Dependency dependency;
             }
 
             static class NotCyclicInjectMethod implements Dependency {
@@ -601,90 +617,3 @@ class ContextTest {
     }
 }
 
-record NamedLiteral(String value) implements jakarta.inject.Named {
-
-    @Override
-    public Class<? extends Annotation> annotationType() {
-        return jakarta.inject.Named.class;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (o instanceof jakarta.inject.Named named) return Objects.equals(value, named.value());
-        return false;
-    }
-
-    @Override
-    public int hashCode() {
-        return "value".hashCode() * 127 ^ value.hashCode();
-    }
-}
-
-@java.lang.annotation.Documented
-@java.lang.annotation.Retention(RUNTIME)
-@jakarta.inject.Qualifier
-@interface Skywalker {
-}
-
-record SkywalkerLiteral() implements Skywalker {
-
-    @Override
-    public Class<? extends Annotation> annotationType() {
-        return Skywalker.class;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        return obj instanceof Skywalker;
-    }
-}
-
-record TestLiteral() implements Test {
-
-    @Override
-    public Class<? extends Annotation> annotationType() {
-        return Test.class;
-    }
-}
-
-record SingletonLiteral() implements Singleton {
-    @Override
-    public Class<? extends Annotation> annotationType() {
-        return Singleton.class;
-    }
-}
-
-@Scope
-@Documented
-@Retention(RUNTIME)
-@interface Pooled {}
-
-record PooledLiteral() implements Pooled {
-
-    @Override
-    public Class<? extends Annotation> annotationType() {
-        return Pooled.class;
-    }
-}
-
-class PooledProvider<T> implements ContextConfig.ComponentProvider<T> {
-    static int MAX = 2;
-    private List<T> pool = new ArrayList<>();
-    int current;
-    private ContextConfig.ComponentProvider<T> provider;
-
-    public PooledProvider(ContextConfig.ComponentProvider<T> provider) {
-        this.provider = provider;
-    }
-
-    @Override
-    public T get(Context context) {
-        if(pool.size() < MAX) pool.add(provider.get(context));
-        return pool.get(current ++ % MAX);
-    }
-
-    @Override
-    public List<ComponentRef<?>> getDependencies() {
-        return provider.getDependencies();
-    }
-}
