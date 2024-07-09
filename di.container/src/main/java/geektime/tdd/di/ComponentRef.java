@@ -6,10 +6,7 @@ import java.lang.reflect.Type;
 import java.util.Objects;
 
 public class ComponentRef<ComponentType> {
-    public ComponentRef(Annotation qualifier) {
-        Type type = ((ParameterizedType) getClass().getGenericSuperclass()).getActualTypeArguments()[0];
-        init(type, qualifier);
-    }
+
 
     public static <ComponentType> ComponentRef<ComponentType> of(Class<ComponentType> component) {
         return new ComponentRef(component, null);
@@ -19,16 +16,17 @@ public class ComponentRef<ComponentType> {
         return new ComponentRef(component, qualifier);
     }
 
-    public static ComponentRef of(Type type) {
-        return new ComponentRef(type, null);
-    }
-
     public static ComponentRef of(Type type, Annotation qualifier) {
         return new ComponentRef(type, qualifier);
     }
 
     private Type container;
-    private Component component;
+    private ContextConfig.Component component;
+
+    public ComponentRef(Annotation qualifier) {
+        Type type = ((ParameterizedType) getClass().getGenericSuperclass()).getActualTypeArguments()[0];
+        init(type, qualifier);
+    }
 
     ComponentRef(Type type, Annotation qualifier) {
         init(type, qualifier);
@@ -41,9 +39,9 @@ public class ComponentRef<ComponentType> {
     private void init(Type type, Annotation qualifier) {
         if (type instanceof ParameterizedType container) {
             this.container = container.getRawType();
-            this.component = new Component((Class<ComponentType>) container.getActualTypeArguments()[0], qualifier);
+            this.component = new ContextConfig.Component((Class<ComponentType>) container.getActualTypeArguments()[0], qualifier);
         } else
-            this.component = new Component((Class<ComponentType>) type, qualifier);
+            this.component = new ContextConfig.Component((Class<ComponentType>) type, qualifier);
     }
 
     public Type getContainer() {
@@ -54,7 +52,7 @@ public class ComponentRef<ComponentType> {
         return container != null;
     }
 
-    public Component component() {
+    public ContextConfig.Component component() {
         return component;
     }
 

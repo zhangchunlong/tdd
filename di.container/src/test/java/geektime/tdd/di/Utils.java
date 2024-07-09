@@ -14,27 +14,6 @@ import java.util.Objects;
 
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
-@Nested
-public class Utils {
-    @Nested
-    public class DependenciesSelection {
-        @Nested
-        public class ProviderType {
-        }
-
-        @Nested
-        public class Qualifier {
-
-        }
-    }
-
-    @Nested
-    public class LifecycleManagement {
-
-    }
-
-}
-
 interface TestComponent {
     default Dependency dependency() {return  null;}
 }

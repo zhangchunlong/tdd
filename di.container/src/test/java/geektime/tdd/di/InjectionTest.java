@@ -28,7 +28,7 @@ public class InjectionTest {
     public void setup() throws NoSuchFieldException {
         dependencyProviderType = (ParameterizedType) InjectionTest.class.getDeclaredField("dependencyProvider").getGenericType();
         when(context.get(eq(ComponentRef.of(Dependency.class)))).thenReturn(Optional.of(dependency));
-        when(context.get(eq(ComponentRef.of(dependencyProviderType)))).thenReturn(Optional.of(dependencyProvider));
+        when(context.get(eq(ComponentRef.of(dependencyProviderType, null)))).thenReturn(Optional.of(dependencyProvider));
     }
 
     @Nested
@@ -73,7 +73,7 @@ public class InjectionTest {
             public void should_include_provider_type_from_inject_constructor() {
                 InjectionProvider<ProviderInjectConstructor> provider = new InjectionProvider<>(ProviderInjectConstructor.class);
 
-                assertArrayEquals(new ComponentRef[]{ComponentRef.of(dependencyProviderType)}, provider.getDependencies().toArray(ComponentRef[]::new));
+                assertArrayEquals(new ComponentRef[]{ComponentRef.of(dependencyProviderType, null)}, provider.getDependencies().toArray(ComponentRef[]::new));
             }
             
             static class ProviderInjectConstructor {
@@ -103,12 +103,12 @@ public class InjectionTest {
 
             @Test
             public void should_throw_exception_if_component_is_abstract() {
-                assertThrows(IllegalComponentException.class, () -> new InjectionProvider<>(AbstractTestComponent.class));
+                assertThrows(ComponentError.class, () -> new InjectionProvider<>(AbstractTestComponent.class));
             }
 
             @Test
             public void should_throw_exception_if_component_is_interface() {
-                assertThrows(IllegalComponentException.class, () -> new InjectionProvider<>(TestComponent.class));
+                assertThrows(ComponentError.class, () -> new InjectionProvider<>(TestComponent.class));
             }
 
             static  class MultiInjectConstructors implements TestComponent {
@@ -123,7 +123,7 @@ public class InjectionTest {
 
             @Test
             public void should_throw_exception_if_multi_inject_constructors_provided() {
-                assertThrows(IllegalComponentException.class, () -> {
+                assertThrows(ComponentError.class, () -> {
                     new InjectionProvider<>(MultiInjectConstructors.class);
                 });
             }
@@ -136,7 +136,7 @@ public class InjectionTest {
 
             @Test
             public void should_throw_exception_if_no_inject_nor_default_constructor_provided() {
-                assertThrows(IllegalComponentException.class, () -> {
+                assertThrows(ComponentError.class, () -> {
                     new InjectionProvider<>(NoInjectConstructorNorDefaultConstructor.class);
                 });
             }
@@ -181,7 +181,7 @@ public class InjectionTest {
 
             @Test
             public void should_throw_exception_if_multi_qualifiers_given() {
-                assertThrows(IllegalComponentException.class, () -> new InjectionProvider<>(MultiQualifierInjectConstructor.class));
+                assertThrows(ComponentError.class, () -> new InjectionProvider<>(MultiQualifierInjectConstructor.class));
             }
         }
     }
@@ -221,7 +221,7 @@ public class InjectionTest {
             public void should_include_provider_type_from_inject_field() {
                 InjectionProvider<ProviderInjectField> provider = new InjectionProvider<>(ProviderInjectField.class);
 
-                assertArrayEquals(new ComponentRef[]{ComponentRef.of(dependencyProviderType)}, provider.getDependencies().toArray(ComponentRef[]::new));
+                assertArrayEquals(new ComponentRef[]{ComponentRef.of(dependencyProviderType, null)}, provider.getDependencies().toArray(ComponentRef[]::new));
             }
 
             static class ProviderInjectField {
@@ -246,7 +246,7 @@ public class InjectionTest {
 
             @Test
             public void should_throw_exception_if_inject_field_is_final() {
-                assertThrows(IllegalComponentException.class, () -> new InjectionProvider<>(FinalInjectField.class));
+                assertThrows(ComponentError.class, () -> new InjectionProvider<>(FinalInjectField.class));
             }
         }
 
@@ -288,7 +288,7 @@ public class InjectionTest {
 
             @Test
             public void should_throw_exception_if_multi_qualifiers_given() {
-                assertThrows(IllegalComponentException.class, () -> new InjectionProvider<>(MultiQualifiersInjectField.class));
+                assertThrows(ComponentError.class, () -> new InjectionProvider<>(MultiQualifiersInjectField.class));
             }
         }
     }
@@ -389,7 +389,7 @@ public class InjectionTest {
             public void should_include_provider_type_from_inject_method() {
                 InjectionProvider<ProviderInjectMethod> provider = new InjectionProvider<>(ProviderInjectMethod.class);
 
-                assertArrayEquals(new ComponentRef[]{ComponentRef.of(dependencyProviderType)}, provider.getDependencies().toArray(ComponentRef[]::new));
+                assertArrayEquals(new ComponentRef[]{ComponentRef.of(dependencyProviderType, null)}, provider.getDependencies().toArray(ComponentRef[]::new));
             }
 
             static class ProviderInjectMethod {
@@ -419,7 +419,7 @@ public class InjectionTest {
 
             @Test
             public void should_throw_exception_if_inject_method_has_type_parameter() {
-                assertThrows(IllegalComponentException.class, () -> new InjectionProvider<>(InjectMethodWithTypeParameter.class));
+                assertThrows(ComponentError.class, () -> new InjectionProvider<>(InjectMethodWithTypeParameter.class));
             }
         }
 
@@ -462,7 +462,7 @@ public class InjectionTest {
 
             @Test
             public void should_throw_exception_if_multi_qualifiers_given() {
-                assertThrows(IllegalComponentException.class, () -> new InjectionProvider<>(MultiQualifierInjectMethod.class));
+                assertThrows(ComponentError.class, () -> new InjectionProvider<>(MultiQualifierInjectMethod.class));
             }
         }
     }

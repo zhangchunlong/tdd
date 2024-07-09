@@ -37,7 +37,7 @@ class ContextTest {
     class TypeBinding {
         @Test
         public void should_bind_type_to_a_specific_instance() {
-            config.bind(TestComponent.class, instance);
+            config.instance(TestComponent.class, instance);
 
             Context context = config.getContext();
             assertSame(instance, context.get(ComponentRef.of(TestComponent.class)).get());
@@ -46,8 +46,8 @@ class ContextTest {
         @ParameterizedTest(name = "supporting {0}")
         @MethodSource
         public void should_bind_type_to_a_injectable_component(Class<? extends TestComponent> componentType) {
-            config.bind(Dependency.class, dependency);
-            config.bind(TestComponent.class, componentType);
+            config.instance(Dependency.class, dependency);
+            config.component(TestComponent.class, componentType);
 
             Optional<TestComponent> component = config.getContext().get(ComponentRef.of(TestComponent.class));
             assertTrue(component.isPresent());
@@ -106,7 +106,7 @@ class ContextTest {
 
         @Test
         public void should_retrieve_bind_type_as_provider() {
-            config.bind(TestComponent.class, instance);
+            config.instance(TestComponent.class, instance);
             Context context = config.getContext();
 
 //            ParameterizedType type = new TypeLiteral<Provider<Component>>(){}.getType();
@@ -120,7 +120,7 @@ class ContextTest {
 
         @Test
         public void should_not_retrieve_bind_type_as_unsupported_container() {
-            config.bind(TestComponent.class, instance);
+            config.instance(TestComponent.class, instance);
             Context context = config.getContext();
 
 //            ParameterizedType type = new TypeLiteral<List<Component>>(){}.getType();
@@ -136,7 +136,7 @@ class ContextTest {
         public class WithQualifier {
             @Test
             public void should_bind_instance_with_multi_qualifiers() {
-                config.bind(TestComponent.class, instance, new NamedLiteral("ChosenOne"), new SkywalkerLiteral());
+                config.instance(TestComponent.class, instance, new NamedLiteral("ChosenOne"), new SkywalkerLiteral());
 
                 Context context = config.getContext();
                 TestComponent chosenOne = context.get(ComponentRef.of(TestComponent.class, new NamedLiteral("ChosenOne"))).get();
@@ -148,8 +148,8 @@ class ContextTest {
 
             @Test
             public void should_bind_component_with_multi_qualifiers() {
-                config.bind(Dependency.class, dependency);
-                config.bind(InjectorConstructor.class,
+                config.instance(Dependency.class, dependency);
+                config.component(InjectorConstructor.class,
                         InjectorConstructor.class,
                         new NamedLiteral("ChosenOne"), new SkywalkerLiteral());
 
@@ -163,17 +163,17 @@ class ContextTest {
 
             @Test
             public void should_throw_exception_if_illegal_qualifier_given_to_instance() {
-                assertThrows(IllegalComponentException.class, () -> config.bind(TestComponent.class, instance, new TestLiteral()));
+                assertThrows(ContextConfigException.class, () -> config.instance(TestComponent.class, instance, new TestLiteral()));
             }
 
             @Test
             public void should_throw_exception_if_illegal_qualifier_given_to_component() {
-                assertThrows(IllegalComponentException.class, () -> config.bind(InjectorConstructor.class, InjectorConstructor.class, new TestLiteral()));
+                assertThrows(ContextConfigException.class, () -> config.component(InjectorConstructor.class, InjectorConstructor.class, new TestLiteral()));
             }
 
             @Test
             public void should_retrieve_bind_type_as_provider() {
-                config.bind(TestComponent.class, instance, new NamedLiteral("ChosenOne"), new SkywalkerLiteral());
+                config.instance(TestComponent.class, instance, new NamedLiteral("ChosenOne"), new SkywalkerLiteral());
 
                 Optional<Provider<TestComponent>> provider = config.getContext().get(new ComponentRef<Provider<TestComponent>>(new SkywalkerLiteral()) {
                 });
@@ -189,7 +189,7 @@ class ContextTest {
 
             @Test
             public void should_not_be_singleton_scope_by_default() {
-                config.bind(NotSingleton.class, NotSingleton.class);
+                config.component(NotSingleton.class, NotSingleton.class);
                 Context context = config.getContext();
 
                 assertNotSame(context.get(ComponentRef.of(NotSingleton.class)).get(), context.get(ComponentRef.of(NotSingleton.class)).get());
@@ -197,7 +197,7 @@ class ContextTest {
 
             @Test
             public void should_bind_component_as_singleton_scoped() {
-                config.bind(NotSingleton.class, NotSingleton.class, new SingletonLiteral());
+                config.component(NotSingleton.class, NotSingleton.class, new SingletonLiteral());
                 Context context = config.getContext();
 
                 assertSame(context.get(ComponentRef.of(NotSingleton.class)).get(), context.get(ComponentRef.of(NotSingleton.class)).get());
@@ -209,7 +209,7 @@ class ContextTest {
 
             @Test
             public void should_retrieve_scope_annotation_from_component() {
-                config.bind(Dependency.class, SingletonAnnotated.class);
+                config.component(Dependency.class, SingletonAnnotated.class);
                 Context context = config.getContext();
 
                 assertSame(context.get(ComponentRef.of(Dependency.class)).get(), context.get(ComponentRef.of(Dependency.class)).get());
@@ -218,7 +218,7 @@ class ContextTest {
             @Test
             public void should_bind_component_as_customized_scope() {
                 config.scope(Pooled.class, PooledProvider::new);
-                config.bind(NotSingleton.class, NotSingleton.class, new PooledLiteral());
+                config.component(NotSingleton.class, NotSingleton.class, new PooledLiteral());
                 Context context = config.getContext();
 
                 List<NotSingleton> instances = IntStream.range(0, 5).mapToObj(i -> context.get(ComponentRef.of(NotSingleton.class)).get()).toList();
@@ -228,7 +228,7 @@ class ContextTest {
 
             @Test
             public void should_throw_exception_if_multi_scope_provided() {
-                assertThrows(IllegalComponentException.class, () -> config.bind(NotSingleton.class, NotSingleton.class, new SingletonLiteral(), new PooledLiteral()));
+                assertThrows(ContextConfigException.class, () -> config.component(NotSingleton.class, NotSingleton.class, new SingletonLiteral(), new PooledLiteral()));
             }
 
             @Singleton
@@ -238,19 +238,19 @@ class ContextTest {
 
             @Test
             public void should_throw_exception_if_multi_scope_annotated() {
-                assertThrows(IllegalComponentException.class, () -> config.bind(MultiScopeAnnotated.class, MultiScopeAnnotated.class));
+                assertThrows(ContextConfigException.class, () -> config.component(MultiScopeAnnotated.class, MultiScopeAnnotated.class));
             }
 
             @Test
             public void should_throw_exception_if_scope_undefined() {
-                assertThrows(IllegalComponentException.class, () -> config.bind(NotSingleton.class, NotSingleton.class, new PooledLiteral()));
+                assertThrows(ContextConfigException.class, () -> config.component(NotSingleton.class, NotSingleton.class, new PooledLiteral()));
             }
 
             @Nested
             public class WithQualifier {
                 @Test
                 public void should_not_be_singleton_scope_by_default() {
-                    config.bind(NotSingleton.class, NotSingleton.class, new SkywalkerLiteral());
+                    config.component(NotSingleton.class, NotSingleton.class, new SkywalkerLiteral());
                     Context context = config.getContext();
 
                     assertNotSame(context.get(ComponentRef.of(NotSingleton.class, new SkywalkerLiteral())).get(), context.get(ComponentRef.of(NotSingleton.class, new SkywalkerLiteral())).get());
@@ -258,7 +258,7 @@ class ContextTest {
 
                 @Test
                 public void should_bind_component_as_singleton_scoped() {
-                    config.bind(NotSingleton.class, NotSingleton.class, new SingletonLiteral(), new SkywalkerLiteral());
+                    config.component(NotSingleton.class, NotSingleton.class, new SingletonLiteral(), new SkywalkerLiteral());
                     Context context = config.getContext();
 
                     assertSame(context.get(ComponentRef.of(NotSingleton.class, new SkywalkerLiteral())).get(), context.get(ComponentRef.of(NotSingleton.class, new SkywalkerLiteral())).get());
@@ -266,7 +266,7 @@ class ContextTest {
 
                 @Test
                 public void should_retrieve_scope_annotation_from_component() {
-                    config.bind(Dependency.class, SingletonAnnotated.class, new SkywalkerLiteral());
+                    config.component(Dependency.class, SingletonAnnotated.class, new SkywalkerLiteral());
                     Context context = config.getContext();
 
                     assertSame(context.get(ComponentRef.of(Dependency.class, new SkywalkerLiteral())).get(), context.get(ComponentRef.of(Dependency.class, new SkywalkerLiteral())).get());
@@ -281,12 +281,9 @@ class ContextTest {
         @ParameterizedTest
         @MethodSource
         public void should_throw_exception_if_dependency_not_found(Class<? extends TestComponent> component) {
-            config.bind(TestComponent.class, component);
+            config.component(TestComponent.class, component);
 
-            DependencyNotFoundException exception = assertThrows(DependencyNotFoundException.class, () -> config.getContext());
-
-            assertEquals(Dependency.class, exception.getDependency().type());
-            assertEquals(TestComponent.class, exception.getComponent().type());
+            assertThrows(ContextConfigError.class, () -> config.getContext());
         }
 
         public static Stream<Arguments> should_throw_exception_if_dependency_not_found() {
@@ -352,16 +349,10 @@ class ContextTest {
         @MethodSource
         public void should_throw_exception_if_cyclic_dependencies_found(Class<? extends TestComponent> component,
                                                                         Class<? extends Dependency> dependency) {
-            config.bind(TestComponent.class, component);
-            config.bind(Dependency.class, dependency);
+            config.component(TestComponent.class, component);
+            config.component(Dependency.class, dependency);
 
-            CyclicDenpendenciesFoundException exception = assertThrows(CyclicDenpendenciesFoundException.class, () -> config.getContext());
-
-            Set<Class<?>> classes = Sets.newSet(exception.getComponents());
-
-            assertEquals(2, classes.size());
-            assertTrue(classes.contains(TestComponent.class));
-            assertTrue(classes.contains(Dependency.class));
+            assertThrows(ContextConfigError.class, () -> config.getContext());
         }
 
         public static Stream<Arguments> should_throw_exception_if_cyclic_dependencies_found() {
@@ -415,18 +406,11 @@ class ContextTest {
         public void should_throw_exception_if_transitive_cyclic_dependencies_found(Class<? extends TestComponent> component,
                                                                                    Class<? extends Dependency> dependency,
                                                                                    Class<? extends AnotherDependency> anotherDependency) {
-            config.bind(TestComponent.class, component);
-            config.bind(Dependency.class, dependency);
-            config.bind(AnotherDependency.class, anotherDependency);
+            config.component(TestComponent.class, component);
+            config.component(Dependency.class, dependency);
+            config.component(AnotherDependency.class, anotherDependency);
 
-            CyclicDenpendenciesFoundException exception = assertThrows(CyclicDenpendenciesFoundException.class, () -> config.getContext());
-
-            List<Class<?>> components = Arrays.asList(exception.getComponents());
-
-            assertEquals(3, components.size());
-            assertTrue(components.contains(TestComponent.class));
-            assertTrue(components.contains(Dependency.class));
-            assertTrue(components.contains(AnotherDependency.class));
+            assertThrows(ContextConfigError.class, () -> config.getContext());
         }
 
         public static Stream<Arguments> should_throw_exception_if_transitive_cyclic_dependencies_found() {
@@ -486,8 +470,8 @@ class ContextTest {
 
         @Test
         public void should_not_throw_exception_if_cyclic_dependency_via_provider() {
-            config.bind(TestComponent.class, CyclicTestComponentInjectConstructor.class);
-            config.bind(Dependency.class, CyclicDependencyProviderConstructor.class);
+            config.component(TestComponent.class, CyclicTestComponentInjectConstructor.class);
+            config.component(Dependency.class, CyclicDependencyProviderConstructor.class);
 
             Context context = config.getContext();
             assertTrue(context.get(ComponentRef.of(TestComponent.class)).isPresent());
@@ -498,13 +482,10 @@ class ContextTest {
             @ParameterizedTest
             @MethodSource
             public void should_throw_exception_if_dependency_with_qualifier_not_found(Class<? extends TestComponent> component) {
-                config.bind(Dependency.class, dependency);
-                config.bind(TestComponent.class, component, new NamedLiteral("Owner"));
+                config.instance(Dependency.class, dependency);
+                config.component(TestComponent.class, component, new NamedLiteral("Owner"));
 
-                DependencyNotFoundException exception = assertThrows(DependencyNotFoundException.class, () -> config.getContext());
-
-                assertEquals(new Component(TestComponent.class, new NamedLiteral("Owner")), exception.getComponent());
-                assertEquals(new Component(Dependency.class, new SkywalkerLiteral()), exception.getDependency());
+                assertThrows(ContextConfigError.class, () -> config.getContext());
             }
 
             public static Stream<Arguments> should_throw_exception_if_dependency_with_qualifier_not_found() {
@@ -595,9 +576,9 @@ class ContextTest {
             @MethodSource
             public void should_not_throw_cyclic_exception_if_component_with_same_type_tagged_with_different_qualifier(
                     Class<? extends Dependency> skywalker, Class<? extends  Dependency> notCyclic) {
-                config.bind(Dependency.class, dependency, new NamedLiteral("ChosenOne"));
-                config.bind(Dependency.class, skywalker, new SkywalkerLiteral());
-                config.bind(Dependency.class, notCyclic);
+                config.instance(Dependency.class, dependency, new NamedLiteral("ChosenOne"));
+                config.component(Dependency.class, skywalker, new SkywalkerLiteral());
+                config.component(Dependency.class, notCyclic);
 
                 assertDoesNotThrow(() -> config.getContext());
             }
@@ -614,6 +595,90 @@ class ContextTest {
                 return arguments.stream();
             }
         }
+    }
+
+    @Nested
+    public class DSL {
+        interface API {
+        }
+        static class Implementation implements API {
+        }
+
+        @Test
+        public void should_bind_instance_as_its_declaration_type() {
+            Implementation instance = new Implementation();
+            config.from(new Config() {
+                Implementation implementation = instance;
+            });
+
+            Context context = config.getContext();
+            Implementation actual = context.get(ComponentRef.of(Implementation.class, null)).get();
+            assertSame(instance, actual);
+        }
+
+        @Test
+        public void should_bind_component_as_its_own_type() {
+            Implementation instance = new Implementation();
+            config.from(new Config() {
+                Implementation implementation;
+            });
+
+            Context context = config.getContext();
+            Implementation actual = context.get(ComponentRef.of(Implementation.class)).get();
+            assertNotNull(actual);
+        }
+
+        @Test
+        public void should_bind_instance_using_export_type() {
+            Implementation instance = new Implementation();
+            config.from(new Config() {
+                @Export(API.class)
+                Implementation implementation = instance;
+            });
+
+            Context context = config.getContext();
+            API actual = context.get(ComponentRef.of(API.class)).get();
+            assertSame(instance, actual);
+        }
+
+        @Test
+        public void should_bind_component_using_export_type() {
+            Implementation instance = new Implementation();
+            config.from(new Config() {
+                @Export(API.class)
+                Implementation implementation;
+            });
+
+            Context context = config.getContext();
+            API actual = context.get(ComponentRef.of(API.class)).get();
+            assertNotNull(actual);
+        }
+
+        @Test
+        public void should_bind_instance_with_qualifier() {
+            Implementation instance = new Implementation();
+            config.from(new Config() {
+                @Skywalker
+                API implementation = instance;
+            });
+
+            Context context = config.getContext();
+            API actual = context.get(ComponentRef.of(API.class, new SkywalkerLiteral())).get();
+            assertSame(instance, actual);
+        }
+
+        @Test
+        public void should_bind_component_with_qualifier() {
+            config.from(new Config() {
+                @Skywalker
+                Implementation implementation;
+            });
+
+            Context context = config.getContext();
+            Implementation actual = context.get(ComponentRef.of(Implementation.class, new SkywalkerLiteral())).get();
+            assertNotNull(actual);
+        }
+
     }
 }
 
