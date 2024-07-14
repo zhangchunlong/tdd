@@ -50,7 +50,7 @@ public class ResourceServletTest extends ServletTest {
 
     @BeforeEach
     public void before() {
-        response = new OutboundResponseBuilder();
+        response = response();
         RuntimeDelegate delegate = Mockito.mock(RuntimeDelegate.class);
         RuntimeDelegate.setInstance(delegate);
         when(delegate.createHeaderDelegate(eq(NewCookie.class))).thenReturn(new RuntimeDelegate.HeaderDelegate<>() {
@@ -65,6 +65,8 @@ public class ResourceServletTest extends ServletTest {
             }
         });
     }
+
+
 
     @Test
     public void should_use_status_from_response() throws Exception {
@@ -149,17 +151,59 @@ public class ResourceServletTest extends ServletTest {
         HttpResponse<String> httpResponse = get("/test");
         assertEquals(Response.Status.FORBIDDEN.getStatusCode(), httpResponse.statusCode());
     }
+    
+    @Test
+    public void should_use_response_from_web_application_exception_thrown_by_message_body_writer() throws Exception {
+        WebApplicationException exception = new WebApplicationException(response().status(Response.Status.FORBIDDEN).build());
 
-    //TODO: providers gets exception mapper
-    //TODO: runtime delegate
-    //TODO: header delegate
-    //TODO: providers gets message body writer
-    //TODO： message body writer write
+        response().entity(new GenericEntity<>(2.5, Double.class), new Annotation[0]).returnFrom(router);
+        when(providers.getMessageBodyWriter(eq(Double.class), eq(Double.class), eq(new Annotation[0]), eq(MediaType.TEXT_PLAIN_TYPE)))
+                .thenReturn(new MessageBodyWriter<Double>() {
+                    @Override
+                    public boolean isWriteable(Class<?> type, Type genericType, Annotation[] annotations, MediaType mediaType) {
+                        return false;
+                    }
+
+                    @Override
+                    public void writeTo(Double aDouble, Class<?> type, Type genericType, Annotation[] annotations, MediaType mediaType, MultivaluedMap<String, Object> httpHeaders, OutputStream entityStream) throws IOException, WebApplicationException {
+                        throw exception;
+                    }
+                });
+        when(providers.getExceptionMapper(eq(IllegalArgumentException.class))).thenReturn(e -> response.status(Response.Status.FORBIDDEN).build());
+
+        HttpResponse<String> httpResponse = get("/test");
+        assertEquals(Response.Status.FORBIDDEN.getStatusCode(), httpResponse.statusCode());
+    }
+
+    @Test
+    public void should_map_exception_thrown_by_message_body_writer() throws Exception {
+        response().entity(new GenericEntity<>(2.5, Double.class), new Annotation[0]).returnFrom(router);
+        when(providers.getMessageBodyWriter(eq(Double.class), eq(Double.class), eq(new Annotation[0]), eq(MediaType.TEXT_PLAIN_TYPE)))
+                .thenReturn(new MessageBodyWriter<Double>() {
+                    @Override
+                    public boolean isWriteable(Class<?> type, Type genericType, Annotation[] annotations, MediaType mediaType) {
+                        return false;
+                    }
+
+                    @Override
+                    public void writeTo(Double aDouble, Class<?> type, Type genericType, Annotation[] annotations, MediaType mediaType, MultivaluedMap<String, Object> httpHeaders, OutputStream entityStream) throws IOException, WebApplicationException {
+                        throw new IllegalArgumentException();
+                    }
+                });
+        when(providers.getExceptionMapper(eq(IllegalArgumentException.class))).thenReturn(e -> response.status(Response.Status.FORBIDDEN).build());
+
+        HttpResponse<String> httpResponse = get("/test");
+        assertEquals(Response.Status.FORBIDDEN.getStatusCode(), httpResponse.statusCode());
+    }
+
+    private OutboundResponseBuilder response() {
+        return new OutboundResponseBuilder();
+    }
 
     class OutboundResponseBuilder {
         Response.Status status = Response.Status.OK;
         MultivaluedMap<String, Object> headers = new MultivaluedHashMap<>();
-        GenericEntity<String> entity = new GenericEntity<>("entity", String.class);
+        GenericEntity<Object> entity = new GenericEntity<>("entity", String.class);
         Annotation[] annotations = new Annotation[0];
         MediaType mediaType = MediaType.TEXT_PLAIN_TYPE;
 
@@ -173,7 +217,7 @@ public class ResourceServletTest extends ServletTest {
             return this;
         }
 
-        public OutboundResponseBuilder entity(GenericEntity<String> entity, Annotation[] annotations) {
+        public OutboundResponseBuilder entity(GenericEntity<Object> entity, Annotation[] annotations) {
             this.entity = entity;
             this.annotations = annotations;
             return this;
