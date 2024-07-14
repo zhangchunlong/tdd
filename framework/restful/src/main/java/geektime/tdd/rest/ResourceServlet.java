@@ -30,37 +30,43 @@ public class ResourceServlet extends HttpServlet {
         respond(resp, () -> router.dispatch(req, runtime.createResourceContext(req, resp)));
     }
 
-    private void respond(HttpServletResponse resp, Supplier<OutBoundResponse> supplier) {
+    private void respond(HttpServletResponse resp, Supplier<OutboundResponse> supplier) {
         try {
             respond(resp, supplier.get());
         } catch (WebApplicationException exception) {
-            respond(resp, () -> (OutBoundResponse) exception.getResponse());
+            respond(resp, () -> (OutboundResponse) exception.getResponse());
         } catch (Throwable throwable) {
             respond(resp, () -> from(throwable));
         }
     }
 
-    private void respond(HttpServletResponse resp, OutBoundResponse response) throws IOException {
+    private void respond(HttpServletResponse resp, OutboundResponse response) throws IOException {
         resp.setStatus(response.getStatus());
 
-        MultivaluedMap<String, Object> headers = response.getHeaders();
+        headers(resp, response.getHeaders());
+
+        body(resp, response, response.getGenericEntity());
+    }
+
+    private void body(HttpServletResponse resp, OutboundResponse response, GenericEntity entity) throws IOException {
+        if (entity == null) return;
+        MessageBodyWriter writer = providers.getMessageBodyWriter(entity.getRawType(), entity.getType(), response.getAnnotations(), response.getMediaType());
+        writer.writeTo(entity.getEntity(), entity.getRawType(), entity.getType(), response.getAnnotations(), response.getMediaType(),
+                response.getHeaders(), resp.getOutputStream());
+
+    }
+
+    private void headers(HttpServletResponse resp, MultivaluedMap<String, Object> headers) {
         for(String name: headers.keySet()) {
             for(Object value: headers.get(name)) {
                 RuntimeDelegate.HeaderDelegate headerDelegate = RuntimeDelegate.getInstance().createHeaderDelegate(value.getClass());
                 resp.addHeader(name, headerDelegate.toString(value));
             }
         }
-
-        GenericEntity entity = response.genericEntity();
-        if(entity != null) {
-            MessageBodyWriter writer = providers.getMessageBodyWriter(entity.getRawType(), entity.getType(), response.getAnnotations(), response.getMediaType());
-            writer.writeTo(entity.getEntity(), entity.getRawType(), entity.getType(), response.getAnnotations(), response.getMediaType(),
-                    response.getHeaders(), resp.getOutputStream());
-        }
     }
 
-    private OutBoundResponse from(Throwable throwable) {
+    private OutboundResponse from(Throwable throwable) {
         ExceptionMapper mapper = providers.getExceptionMapper(throwable.getClass());
-        return (OutBoundResponse) mapper.toResponse(throwable);
+        return (OutboundResponse) mapper.toResponse(throwable);
     }
 }
