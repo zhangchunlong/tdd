@@ -154,10 +154,7 @@ public class ResourceServletTest extends ServletTest {
     public void should_map_exception_thrown_by_provides_when_find_message_message_body_writer() throws Exception {
         RuntimeException exception = new IllegalArgumentException();
 
-        response().entity(new GenericEntity<>(2.5, Double.class), new Annotation[0]).returnFrom(router);
-
-        when(providers.getMessageBodyWriter(eq(Double.class), eq(Double.class), eq(new Annotation[0]), eq(MediaType.TEXT_PLAIN_TYPE)))
-                .thenThrow(exception);
+        providersGetMessageBodyWriterThrows(exception);
         when(providers.getExceptionMapper(eq(IllegalArgumentException.class))).thenReturn(e -> response.status(Response.Status.FORBIDDEN).build());
 
 
@@ -169,14 +166,18 @@ public class ResourceServletTest extends ServletTest {
     public void should_use_response_from_web_application_exception_thrown_by_provides_when_find_message_message_body_writer() throws Exception {
         RuntimeException exception = new WebApplicationException(response().status(Response.Status.FORBIDDEN).build());;
 
-        response().entity(new GenericEntity<>(2.5, Double.class), new Annotation[0]).returnFrom(router);
-
-        when(providers.getMessageBodyWriter(eq(Double.class), eq(Double.class), eq(new Annotation[0]), eq(MediaType.TEXT_PLAIN_TYPE)))
-                .thenThrow(exception);
+        providersGetMessageBodyWriterThrows(exception);
         when(providers.getExceptionMapper(eq(IllegalArgumentException.class))).thenReturn(e -> response.status(Response.Status.FORBIDDEN).build());
 
         HttpResponse<String> httpResponse = get("/test");
         assertEquals(Response.Status.FORBIDDEN.getStatusCode(), httpResponse.statusCode());
+    }
+
+    private void providersGetMessageBodyWriterThrows(RuntimeException exception) {
+        response().entity(new GenericEntity<>(2.5, Double.class), new Annotation[0]).returnFrom(router);
+
+        when(providers.getMessageBodyWriter(eq(Double.class), eq(Double.class), eq(new Annotation[0]), eq(MediaType.TEXT_PLAIN_TYPE)))
+                .thenThrow(exception);
     }
 
     @Test
