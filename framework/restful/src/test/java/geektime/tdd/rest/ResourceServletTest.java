@@ -152,45 +152,25 @@ public class ResourceServletTest extends ServletTest {
 
     @Test
     public void should_map_exception_thrown_by_provides_when_find_message_message_body_writer() throws Exception {
-        RuntimeException exception = new IllegalArgumentException();
-
-        providersGetMessageBodyWriterThrows(exception);
-        when(providers.getExceptionMapper(eq(IllegalArgumentException.class))).thenReturn(e -> response.status(Response.Status.FORBIDDEN).build());
-
-
-        HttpResponse<String> httpResponse = get("/test");
-        assertEquals(Response.Status.FORBIDDEN.getStatusCode(), httpResponse.statusCode());
+        otherExceptionThrownFrom(this::providers_GetMessageBodyWriter);
     }
 
     @Test
-    public void should_use_response_from_web_application_exception_thrown_by_provides_when_find_message_message_body_writer() throws Exception {
-        RuntimeException exception = new WebApplicationException(response().status(Response.Status.FORBIDDEN).build());;
-
-        providersGetMessageBodyWriterThrows(exception);
-        when(providers.getExceptionMapper(eq(IllegalArgumentException.class))).thenReturn(e -> response.status(Response.Status.FORBIDDEN).build());
-
-        HttpResponse<String> httpResponse = get("/test");
-        assertEquals(Response.Status.FORBIDDEN.getStatusCode(), httpResponse.statusCode());
-    }
-
-    private void providersGetMessageBodyWriterThrows(RuntimeException exception) {
-        response().entity(new GenericEntity<>(2.5, Double.class), new Annotation[0]).returnFrom(router);
-
-        when(providers.getMessageBodyWriter(eq(Double.class), eq(Double.class), eq(new Annotation[0]), eq(MediaType.TEXT_PLAIN_TYPE)))
-                .thenThrow(exception);
+    public void should_map_exception_thrown_by_message_body_writer() throws Exception {
+        otherExceptionThrownFrom(this::messageBodyWriter_WriteTo);
     }
 
     @Test
     public void should_use_response_from_web_application_exception_thrown_by_message_body_writer() throws Exception {
-        RuntimeException exception = new WebApplicationException(response().status(Response.Status.FORBIDDEN).build());
-
-        messageBodyWriteToThrows(exception);
-
-        HttpResponse<String> httpResponse = get("/test");
-        assertEquals(Response.Status.FORBIDDEN.getStatusCode(), httpResponse.statusCode());
+        webApplicationExceptionThrownFrom(this::messageBodyWriter_WriteTo);
     }
 
-    private void messageBodyWriteToThrows(RuntimeException exception) {
+    @Test
+    public void should_use_response_from_web_application_exception_thrown_by_provides_when_find_message_message_body_writer() throws Exception {
+        webApplicationExceptionThrownFrom(this::providers_GetMessageBodyWriter);
+    }
+
+    private void messageBodyWriter_WriteTo(RuntimeException exception) {
         response().entity(new GenericEntity<>(2.5, Double.class), new Annotation[0]).returnFrom(router);
         when(providers.getMessageBodyWriter(eq(Double.class), eq(Double.class), eq(new Annotation[0]), eq(MediaType.TEXT_PLAIN_TYPE)))
                 .thenReturn(new MessageBodyWriter<Double>() {
@@ -204,14 +184,30 @@ public class ResourceServletTest extends ServletTest {
                         throw exception;
                     }
                 });
-        when(providers.getExceptionMapper(eq(IllegalArgumentException.class))).thenReturn(e -> response.status(Response.Status.FORBIDDEN).build());
     }
 
-    @Test
-    public void should_map_exception_thrown_by_message_body_writer() throws Exception {
-        RuntimeException exception = new IllegalArgumentException();
+    private void providers_GetMessageBodyWriter(RuntimeException exception) {
+        response().entity(new GenericEntity<>(2.5, Double.class), new Annotation[0]).returnFrom(router);
 
-        messageBodyWriteToThrows(exception);
+        when(providers.getMessageBodyWriter(eq(Double.class), eq(Double.class), eq(new Annotation[0]), eq(MediaType.TEXT_PLAIN_TYPE)))
+                .thenThrow(exception);
+    }
+
+    private void webApplicationExceptionThrownFrom(Consumer<RuntimeException> caller) throws Exception {
+        RuntimeException exception = new WebApplicationException(response().status(Response.Status.FORBIDDEN).build());
+        ;
+        caller.accept(exception);
+        when(providers.getExceptionMapper(eq(IllegalArgumentException.class))).thenReturn(e -> response.status(Response.Status.FORBIDDEN).build());
+
+        HttpResponse<String> httpResponse = get("/test");
+        assertEquals(Response.Status.FORBIDDEN.getStatusCode(), httpResponse.statusCode());
+    }
+
+    private void otherExceptionThrownFrom(Consumer<RuntimeException> caller) throws Exception {
+        RuntimeException exception = new IllegalArgumentException();
+        caller.accept(exception);
+
+        when(providers.getExceptionMapper(eq(IllegalArgumentException.class))).thenReturn(e -> response.status(Response.Status.FORBIDDEN).build());
 
         HttpResponse<String> httpResponse = get("/test");
         assertEquals(Response.Status.FORBIDDEN.getStatusCode(), httpResponse.statusCode());
