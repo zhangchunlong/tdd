@@ -11,4 +11,5 @@ public interface Runtime {
     ResourceContext createResourceContext(HttpServletRequest request, HttpServletResponse response);
     Context getApplicationContext();
     ResourceRouter getResourceRouter();
+
 }
