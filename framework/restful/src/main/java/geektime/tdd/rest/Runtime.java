@@ -8,8 +8,12 @@ import jakarta.ws.rs.ext.Providers;
 
 public interface Runtime {
     Providers getProviders();
+
     ResourceContext createResourceContext(HttpServletRequest request, HttpServletResponse response);
+
+    UriInfoBuilder createUriInfoBuilder(HttpServletRequest request);
     Context getApplicationContext();
+
     ResourceRouter getResourceRouter();
 
 }
