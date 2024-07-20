@@ -40,11 +40,11 @@ class DefaultResourceRouter implements ResourceRouter {
     public OutboundResponse dispatch(HttpServletRequest request, ResourceContext resourceContext) {
         String path = request.getServletPath();
         UriInfoBuilder uri = runtime.createUriInfoBuilder(request);
-        Optional<RootResource> matched = rootResources.stream().map(resource -> new Result(resource.getUriTemplate().match(path), resource))
-                .filter(result -> result.matched.isPresent()).map(Result::resource)
+        Optional<Result> matched = rootResources.stream().map(resource -> new Result(resource.getUriTemplate().match(path), resource))
+                .filter(result -> result.matched.isPresent()).sorted((x, y) -> x.matched.get().compareTo(y.matched.get()))
                 .findFirst();
 
-        Optional<ResourceMethod> method = matched.flatMap(resource -> resource.match(path, request.getMethod(),
+        Optional<ResourceMethod> method = matched.flatMap(result -> result.resource.match(result.matched.get().getRemaining(), request.getMethod(),
                 Collections.list(request.getHeaders(HttpHeaders.ACCEPT)).toArray(String[]::new), uri));
 
         GenericEntity<?> entity = method.map(m -> m.call(resourceContext, uri)).get();
@@ -52,6 +52,6 @@ class DefaultResourceRouter implements ResourceRouter {
         return (OutboundResponse) Response.ok(entity).build();
     }
 
-    record Result(Optional<UriTemplate.MatchResult> matched, RootResource resource) {
+    record Result(Optional<UriTemplate.MatchResult> matched, RootResource resource)  {
     }
 }

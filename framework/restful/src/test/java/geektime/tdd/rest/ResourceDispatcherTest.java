@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Vector;
 
@@ -38,7 +39,7 @@ public class ResourceDispatcherTest {
 
         request = Mockito.mock(HttpServletRequest.class);
         context = Mockito.mock(ResourceContext.class);
-        when(request.getServletPath()).thenReturn("/users");
+        when(request.getServletPath()).thenReturn("/users/1");
         when(request.getMethod()).thenReturn("GET");
         when(request.getHeaders(eq(HttpHeaders.ACCEPT))).thenReturn(new Vector<>(List.of(MediaType.WILDCARD)).elements());
 
@@ -46,32 +47,101 @@ public class ResourceDispatcherTest {
         when(runtime.createUriInfoBuilder(same(request))).thenReturn(builder);
     }
 
-    //TODO 根据与Path匹配结果，降序排列RootResource, 选择第一个的RootResource
-    //TODO R1,R2 R1 matched R2 None  R1
-    //TODO R1,R2 R1,R2 matched  R1 result < R2 result R1
-
     @Test
     public void should_use_matched_root_resource() {
-        ResourceRouter.RootResource matched = Mockito.mock(ResourceRouter.RootResource.class);
-        UriTemplate matchedUriTemplate = Mockito.mock(UriTemplate.class);
-        UriTemplate.MatchResult result = Mockito.mock(UriTemplate.MatchResult.class);
-        when(matched.getUriTemplate()).thenReturn(matchedUriTemplate);
-        when(matchedUriTemplate.match(eq("/users"))).thenReturn(Optional.of(result));
-        ResourceRouter.ResourceMethod method = Mockito.mock(ResourceRouter.ResourceMethod.class);
-        when(matched.match(eq("/users"), eq("GET"), eq(new String[]{MediaType.WILDCARD}), eq(builder))).thenReturn(Optional.of(method));
         GenericEntity entity = new GenericEntity("matched", String.class);
-        when(method.call(any(), any())).thenReturn(entity);
 
-
-        ResourceRouter.RootResource unmatched = Mockito.mock(ResourceRouter.RootResource.class);
-        UriTemplate unmatchedUriTemplate = Mockito.mock(UriTemplate.class);
-        when(unmatched.getUriTemplate()).thenReturn(unmatchedUriTemplate);
-        when(unmatchedUriTemplate.match(eq("/users"))).thenReturn(Optional.empty());
-
-        ResourceRouter router = new DefaultResourceRouter(runtime, List.of(matched, unmatched));
+        ResourceRouter router = new DefaultResourceRouter(runtime, List.of(
+                rootResource(matched("/users/1", result("/1")), returns(entity)),
+                rootResource(unmatched("/users/1"))));
         OutboundResponse response = router.dispatch(request, context);
         assertSame(entity, response.getGenericEntity());
         assertEquals(200, response.getStatus());
+    }
+
+    @Test
+    public void should_sort_root_resource_descending_order(){
+        GenericEntity entity1 = new GenericEntity("1", String.class);
+        GenericEntity entity2 = new GenericEntity("2", String.class);
+
+        ResourceRouter router = new DefaultResourceRouter(runtime, List.of(
+                rootResource(matched("/users/1", result("/1", 2)), returns(entity2)),
+                rootResource(matched("/users/1", result("/1", 1)), returns(entity1))
+                ));
+
+        OutboundResponse response = router.dispatch(request, context);
+
+        assertSame(entity1, response.getGenericEntity());
+        assertEquals(200, response.getStatus());
+    }
+
+    private ResourceRouter.RootResource rootResource(UriTemplate unmatchedUriTemplate) {
+        ResourceRouter.RootResource unmatched = Mockito.mock(ResourceRouter.RootResource.class);
+        when(unmatched.getUriTemplate()).thenReturn(unmatchedUriTemplate);
+        return unmatched;
+    }
+
+    private UriTemplate unmatched(String path) {
+        UriTemplate unmatchedUriTemplate = Mockito.mock(UriTemplate.class);
+        when(unmatchedUriTemplate.match(eq(path))).thenReturn(Optional.empty());
+        return unmatchedUriTemplate;
+    }
+
+    private ResourceRouter.RootResource rootResource(UriTemplate matchedUriTemplate, ResourceRouter.ResourceMethod method) {
+        ResourceRouter.RootResource matched = Mockito.mock(ResourceRouter.RootResource.class);
+        when(matched.getUriTemplate()).thenReturn(matchedUriTemplate);
+        when(matched.match(eq("/1"), eq("GET"), eq(new String[]{MediaType.WILDCARD}), eq(builder))).thenReturn(Optional.of(method));
+        return matched;
+    }
+
+    private ResourceRouter.ResourceMethod returns(GenericEntity entity) {
+        ResourceRouter.ResourceMethod method = Mockito.mock(ResourceRouter.ResourceMethod.class);
+        when(method.call(same(context), same(builder))).thenReturn(entity);
+        return method;
+    }
+
+    private UriTemplate matched(String path, UriTemplate.MatchResult result) {
+        UriTemplate matchedUriTemplate = Mockito.mock(UriTemplate.class);
+        when(matchedUriTemplate.match(eq(path))).thenReturn(Optional.of(result));
+        return matchedUriTemplate;
+    }
+
+    private UriTemplate.MatchResult result(String path) {
+        return new FakeMatchResult(path, 0);
+    }
+
+    private UriTemplate.MatchResult result(String path, int order) {
+        return new FakeMatchResult(path, order);
+    }
+
+    class FakeMatchResult implements UriTemplate.MatchResult{
+        private String remaining;
+        private Integer order;
+
+        public FakeMatchResult(String remaining, Integer order) {
+            this.remaining = remaining;
+            this.order = order;
+        }
+
+        @Override
+        public String getMatched() {
+            return null;
+        }
+
+        @Override
+        public String getRemaining() {
+            return remaining;
+        }
+
+        @Override
+        public Map<String, String> getMatchedParameters() {
+            return null;
+        }
+
+        @Override
+        public int compareTo(UriTemplate.MatchResult o) {
+            return order.compareTo(((FakeMatchResult) o).order);
+        }
     }
 
 }
