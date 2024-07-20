@@ -15,8 +15,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Vector;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.when;
 
@@ -75,9 +74,41 @@ public class ResourceDispatcherTest {
         assertEquals(200, response.getStatus());
     }
 
-    private ResourceRouter.RootResource rootResource(UriTemplate unmatchedUriTemplate) {
+    @Test
+    public void should_return_404_if_no_root_resource_matched() {
+        ResourceRouter router = new DefaultResourceRouter(runtime, List.of(
+                rootResource(unmatched("/users/1"))));
+
+        OutboundResponse response = router.dispatch(request, context);
+
+        assertNull(response.getGenericEntity());
+        assertEquals(404, response.getStatus());
+    }
+
+    @Test
+    public void should_return_404_if_no_resource_method_found() {
+        ResourceRouter router = new DefaultResourceRouter(runtime, List.of(
+                rootResource(matched("/users/1", result("/1", 2)))));
+        OutboundResponse response = router.dispatch(request, context);
+
+        assertNull(response.getGenericEntity());
+        assertEquals(404, response.getStatus());
+    }
+
+    @Test
+    public void should_return_204_if_method_return_null() {
+        ResourceRouter router = new DefaultResourceRouter(runtime, List.of(
+                rootResource(matched("/users/1", result("/1", 2)), returns(null))));
+        OutboundResponse response = router.dispatch(request, context);
+
+        assertNull(response.getGenericEntity());
+        assertEquals(204, response.getStatus());
+    }
+
+    private ResourceRouter.RootResource rootResource(UriTemplate uriTemplate) {
         ResourceRouter.RootResource unmatched = Mockito.mock(ResourceRouter.RootResource.class);
-        when(unmatched.getUriTemplate()).thenReturn(unmatchedUriTemplate);
+        when(unmatched.getUriTemplate()).thenReturn(uriTemplate);
+        when(unmatched.match(eq("/1"), eq("GET"), eq(new String[]{MediaType.WILDCARD}), eq(builder))).thenReturn(Optional.empty());
         return unmatched;
     }
 
@@ -87,9 +118,9 @@ public class ResourceDispatcherTest {
         return unmatchedUriTemplate;
     }
 
-    private ResourceRouter.RootResource rootResource(UriTemplate matchedUriTemplate, ResourceRouter.ResourceMethod method) {
+    private ResourceRouter.RootResource rootResource(UriTemplate uriTemplate, ResourceRouter.ResourceMethod method) {
         ResourceRouter.RootResource matched = Mockito.mock(ResourceRouter.RootResource.class);
-        when(matched.getUriTemplate()).thenReturn(matchedUriTemplate);
+        when(matched.getUriTemplate()).thenReturn(uriTemplate);
         when(matched.match(eq("/1"), eq("GET"), eq(new String[]{MediaType.WILDCARD}), eq(builder))).thenReturn(Optional.of(method));
         return matched;
     }
