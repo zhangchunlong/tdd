@@ -1,6 +1,7 @@
 package geektime.tdd.rest;
 
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
@@ -8,6 +9,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.Mockito;
+
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -23,10 +26,14 @@ public class RootResourceTest {
     //TODO find resource method, matches the http request and http method
 
     @ParameterizedTest
-    @CsvSource({"GET,/messages/hello,Messages.hello", "GET,/messages/ah,Messages.ah"})
+    @CsvSource({"GET,/messages/hello,Messages.hello", "GET,/messages/ah,Messages.ah", "POST,/messages/hello,Messages.postHello",
+    "GET,/messages/topics/1234,Messages.topic1234"})
     public void should_match_resource_method(String httpMethod, String path, String resourceMethod) {
         ResourceRouter.RootResource resource = new RootResourceClass(Messages.class);
-        ResourceRouter.ResourceMethod method = resource.match(path, httpMethod, new String[]{MediaType.TEXT_PLAIN}, Mockito.mock(UriInfoBuilder.class)).get();
+
+        UriTemplate.MatchResult result = resource.getUriTemplate().match(path).get();
+
+        ResourceRouter.ResourceMethod method = resource.match(result, httpMethod, new String[]{MediaType.TEXT_PLAIN}, Mockito.mock(UriInfoBuilder.class)).get();
         assertEquals(resourceMethod, method.toString());
     }
     //TODO if sub resource locator matches uri, using it to do follow up matching
@@ -47,6 +54,27 @@ public class RootResourceTest {
         @Produces(MediaType.TEXT_PLAIN)
         public String hello() {
             return "hello";
+        }
+
+        @POST
+        @Path("/hello")
+        @Produces(MediaType.TEXT_PLAIN)
+        public String postHello() {
+            return "hello";
+        }
+
+        @GET
+        @Path("/topics/{id}")
+        @Produces(MediaType.TEXT_PLAIN)
+        public String topicId() {
+            return "topicId";
+        }
+
+        @GET
+        @Path("/topics/1234")
+        @Produces(MediaType.TEXT_PLAIN)
+        public String topic1234() {
+            return "topic1234";
         }
     }
 }
