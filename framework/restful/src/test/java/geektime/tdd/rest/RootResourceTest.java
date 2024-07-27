@@ -25,7 +25,7 @@ public class RootResourceTest {
     @ParameterizedTest(name = "{3}")
     @CsvSource(textBlock = """
             GET,       /messages/hello,         Messages.hello,          GET and URT match
-            GET,       /messages/ah,            Messages.ah,             GET and URI match
+            GET,       /messages/ah,            Messages.ah,             GET AH and URI match
             POST,      /messages/hello,         Messages.postHello,      POST and URI match
             GET,       /messages/topics/1234,   Messages.topic1234,      GET with multiply choices
             GET,       /messages,               Messages.get,            GET with resource method without PATH
@@ -94,6 +94,13 @@ public class RootResourceTest {
         @Produces(MediaType.TEXT_PLAIN)
         public String hello() {
             return "hello";
+        }
+
+        @GET
+        @Path("/ah")
+        @Produces(MediaType.TEXT_PLAIN)
+        public String ah() {
+            return "ah";
         }
 
         @POST
