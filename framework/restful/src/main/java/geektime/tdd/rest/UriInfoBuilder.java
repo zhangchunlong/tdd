@@ -1,9 +1,8 @@
 package geektime.tdd.rest;
 
 interface UriInfoBuilder {
-    void pushMatchedPath(String path);
 
-    void addParameter(String name, String value);
+    Object getLastMatchedResource();
 
-    String getUnmatchedURI();
+    void addMatchedResource(Object resource);
 }

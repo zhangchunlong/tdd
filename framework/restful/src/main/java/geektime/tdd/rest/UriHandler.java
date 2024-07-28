@@ -16,7 +16,6 @@ class UriHandlers {
         return matched(path, handlers, r -> true).flatMap(r -> mapper.apply(r.matched(), r.handler()));
     }
 
-
     public static <T extends UriHandler> Optional<T> match(String path, List<T> handlers, Function<UriTemplate.MatchResult, Boolean> matchFunction) {
         return matched(path, handlers, matchFunction).map(Result::handler);
     }
