@@ -4,7 +4,6 @@ import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
-import org.mockito.Mockito;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -22,6 +21,7 @@ public class ResourceMethodsTest {
             PATCH,     /messages/hello,         Messages.patchHello,     PATCH and URI match
             HEAD,      /messages/hello,         Messages.headHello,      HEAD and URI match
             OPTIONS,   /messages/hello,         Messages.optionsHello,   OPTIONS and URI match
+            HEAD,       /messages/head,         Messages.getHead,        HEAD with GET resource method
             """)
     public void should_match_resource_method_in_root_resource(String httpMethod, String path, String resourceMethod, String context) {
         ResourceMethods resourceMethods = new ResourceMethods(Messages.class.getMethods());
@@ -63,6 +63,13 @@ public class ResourceMethodsTest {
         @Produces(MediaType.TEXT_PLAIN)
         public String get() {
             return "messages";
+        }
+
+        @Path("/head")
+        @GET
+        @Produces(MediaType.TEXT_PLAIN)
+        public String getHead() {
+            return "head";
         }
 
         @GET
