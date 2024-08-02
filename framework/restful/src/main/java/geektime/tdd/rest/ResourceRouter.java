@@ -93,6 +93,30 @@ class DefaultResourceMethod implements ResourceRouter.ResourceMethod {
     }
 }
 
+class HeadResourceMethod implements ResourceRouter.ResourceMethod {
+    ResourceRouter.ResourceMethod method;
+
+    public HeadResourceMethod(ResourceRouter.ResourceMethod method) {
+        this.method = method;
+    }
+
+    @Override
+    public String getHttpMethod() {
+        return method.getHttpMethod();
+    }
+
+    @Override
+    public GenericEntity<?> call(ResourceContext resourceContext, UriInfoBuilder builder) {
+        method.call(resourceContext, builder);
+        return null;
+    }
+
+    @Override
+    public UriTemplate getUriTemplate() {
+        return method.getUriTemplate();
+    }
+}
+
 class ResourceMethods {
     private Map<String, List<ResourceRouter.ResourceMethod>> resourceMethods;
 
@@ -112,12 +136,51 @@ class ResourceMethods {
     }
 
     private Optional<ResourceRouter.ResourceMethod> findAlternative(String path, String method) {
-        return "HEAD".equals(method) ? findMethod(path, "GET"): Optional.empty();
-
+        if (HttpMethod.HEAD.equals(method))
+            return findMethod(path, HttpMethod.GET).map(HeadResourceMethod::new);
+        if (HttpMethod.OPTIONS.equals(method)) return Optional.of(new OptionResourceMethod(path));
+        return Optional.empty();
     }
 
     private Optional<ResourceRouter.ResourceMethod> findMethod(String path, String method) {
         return Optional.ofNullable(resourceMethods.get(method)).flatMap(methods  -> UriHandlers.match(path, methods, r -> r.getRemaining() == null));
+    }
+
+    class OptionResourceMethod implements ResourceRouter.ResourceMethod {
+
+        private String path;
+
+        public OptionResourceMethod(String path) {
+
+            this.path = path;
+        }
+
+        @Override
+        public String getHttpMethod() {
+            return null;
+        }
+
+        @Override
+        public GenericEntity<?> call(ResourceContext resourceContext, UriInfoBuilder builder) {
+
+            return  new GenericEntity<>(Response.noContent().allow(findAllowedMethods()).build(), Response.class);
+        }
+
+        private Set<String> findAllowedMethods() {
+            Set<String> allowed = List.of(HttpMethod.GET, HttpMethod.HEAD, HttpMethod.OPTIONS, HttpMethod.PUT,
+                    HttpMethod.POST, HttpMethod.DELETE, HttpMethod.PATCH).stream()
+                    .filter(method -> findMethod(path, method).isPresent())
+                    .collect(Collectors.toSet());
+
+            allowed.add(HttpMethod.OPTIONS);
+            if(allowed.contains(HttpMethod.GET)) allowed.add(HttpMethod.HEAD);
+            return allowed;
+        }
+
+        @Override
+        public UriTemplate getUriTemplate() {
+            return null;
+        }
     }
 }
 
