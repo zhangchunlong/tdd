@@ -5,6 +5,7 @@ import jakarta.ws.rs.container.ResourceContext;
 import jakarta.ws.rs.core.GenericEntity;
 import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.RuntimeDelegate;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -56,6 +57,20 @@ public class ResourceDispatcherTest {
         OutboundResponse response = router.dispatch(request, context);
         assertSame(entity, response.getGenericEntity());
         assertEquals(200, response.getStatus());
+    }
+
+    @Test
+    public void should_use_response_object_from_resource_matched() {
+        OutboundResponse returnResponse = Mockito.mock(OutboundResponse.class);
+        when(returnResponse.getStatus()).thenReturn(304);
+        GenericEntity entity = new GenericEntity(returnResponse, OutboundResponse.class);
+
+        ResourceRouter router = new DefaultResourceRouter(runtime, List.of(
+                rootResource(matched("/users/1", result("/1")), returns(entity)),
+                rootResource(unmatched("/users/1"))));
+        OutboundResponse response = router.dispatch(request, context);
+
+        assertEquals(304, response.getStatus());
     }
 
     @Test

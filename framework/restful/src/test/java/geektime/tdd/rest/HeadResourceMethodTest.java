@@ -1,5 +1,6 @@
 package geektime.tdd.rest;
 
+import jakarta.ws.rs.HttpMethod;
 import jakarta.ws.rs.container.ResourceContext;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -41,9 +42,6 @@ public class HeadResourceMethodTest {
         HeadResourceMethod headResourceMethod = new HeadResourceMethod(method);
         Mockito.when(method.getHttpMethod()).thenReturn("GET");
 
-        assertEquals("GET", headResourceMethod.getHttpMethod());
+        assertEquals(HttpMethod.HEAD, headResourceMethod.getHttpMethod());
     }
-
-
-
 }
