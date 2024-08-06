@@ -19,7 +19,7 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import static geektime.tdd.rest.DefaultResourceMethod.ValueConverter.singleValued;
+import static geektime.tdd.rest.MethodInvoker.ValueConverter.singleValued;
 import static java.util.Arrays.stream;
 
 interface ResourceRouter {
@@ -64,7 +64,6 @@ class DefaultResourceRouter implements ResourceRouter {
         return handler.match(matched.get(), request.getMethod(),
                 Collections.list(request.getHeaders(HttpHeaders.ACCEPT)).toArray(String[]::new), resourceContext, uri);
     }
-
 }
 
 class DefaultResourceMethod implements ResourceRouter.ResourceMethod {
@@ -92,57 +91,8 @@ class DefaultResourceMethod implements ResourceRouter.ResourceMethod {
 
     @Override
     public GenericEntity<?> call(ResourceContext resourceContext, UriInfoBuilder builder) {
-        try {
-            UriInfo uriInfo = builder.createUriInfo();
-
-            Object result = method.invoke(builder.getLastMatchedResource(),
-                    stream(method.getParameters()).map(parameter ->
-                    injectParameter(parameter, uriInfo)
-                            .or(() -> injectContext(parameter, resourceContext, uriInfo))
-                            .orElse(null)).toArray(Object[]::new));
-            return result != null? new GenericEntity<>(result, method.getGenericReturnType()): null;
-        } catch (IllegalAccessException | InvocationTargetException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private Optional<Object> injectParameter(Parameter parameter, UriInfo uriInfo) {
-        return providers.stream().map(provider -> provider.provide(parameter, uriInfo)).filter(Optional::isPresent)
-        .findFirst()
-        .flatMap(values -> values.flatMap(v -> convert(parameter, v)));
-    }
-
-    private Optional<Object> injectContext(Parameter parameter, ResourceContext resourceContext, UriInfo uriInfo) {
-        if(parameter.getType().equals(ResourceContext.class)) return Optional.of(resourceContext);
-        if(parameter.getType().equals(UriInfo.class)) return Optional.of(uriInfo);
-        return Optional.of(resourceContext.getResource(parameter.getType()));
-    }
-
-    private Optional<Object> convert(Parameter parameter, List<String> values) {
-        return PrimitiveConverter.convert(parameter, values)
-                .or(() -> ConverterConstructor.convert(parameter.getType(), values.get(0)))
-                .or(() -> ConverterFactory.convert(parameter.getType(), values.get(0)));
-    }
-
-    static ValueProvider pathParam = (parameter, uriInfo) ->
-            Optional.ofNullable(parameter.getAnnotation(PathParam.class))
-                    .map(annotation -> uriInfo.getPathParameters().get(annotation.value()));
-
-    static ValueProvider queryParam = (parameter, uriInfo) ->
-            Optional.ofNullable(parameter.getAnnotation(QueryParam.class))
-                    .map(annotation -> uriInfo.getQueryParameters().get(annotation.value()));
-
-    private static List<ValueProvider> providers = List.of(pathParam, queryParam);
-    interface ValueProvider {
-        Optional<List<String>> provide(Parameter parameter, UriInfo uriInfo);
-    }
-
-    interface ValueConverter<T> {
-        T fromString(List<String> values);
-
-        static <T> ValueConverter<T> singleValued(Function<String, T> converter) {
-            return values -> converter.apply(values.get(0));
-        }
+        Object result = MethodInvoker.invoke(method, resourceContext, builder);
+        return result != null? new GenericEntity<>(result, method.getGenericReturnType()): null;
     }
 
     @Override
@@ -151,43 +101,6 @@ class DefaultResourceMethod implements ResourceRouter.ResourceMethod {
     }
 }
 
-class PrimitiveConverter {
-    private static Map<Type, DefaultResourceMethod.ValueConverter<Object>> primitives = Map.of(
-            int.class, singleValued(Integer::parseInt),
-            double.class, singleValued(Double::parseDouble),
-            float.class, singleValued(Float::parseFloat),
-            short.class, singleValued(Short::parseShort),
-            byte.class, singleValued(Byte::parseByte),
-            boolean.class, singleValued(Boolean::parseBoolean),
-            String.class, singleValued(s -> s));
-
-    public static Optional<Object> convert(Parameter parameter, List<String> values) {
-                return Optional.ofNullable(primitives.get(parameter.getType()))
-                        .map(c -> c.fromString(values));
-            }
-}
-
-class ConverterConstructor {
-
-    public static Optional<Object> convert(Class<?> converter, String value) {
-        try {
-            return Optional.of(converter.getConstructor(String.class).newInstance(value));
-        } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException | InstantiationException e) {
-            return Optional.empty();
-        }
-    }
-}
-
-class ConverterFactory {
-
-    public static Optional<Object> convert(Class<?> converter, String value) {
-        try {
-            return Optional.of(converter.getMethod("valueOf", String.class).invoke(null, value));
-        } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
-           return Optional.empty();
-        }
-    }
-}
 
 class HeadResourceMethod implements ResourceRouter.ResourceMethod {
     ResourceRouter.ResourceMethod method;
@@ -319,7 +232,7 @@ class SubResourceLocators {
         public Optional<ResourceRouter.ResourceMethod> match(UriTemplate.MatchResult result, String httpMethod, String[] mediaTypes, ResourceContext resourceContext, UriInfoBuilder builder) {
             Object resource = builder.getLastMatchedResource();
             try {
-                Object subResource = method.invoke(resource);
+                Object subResource = MethodInvoker.invoke(method, resourceContext, builder);
                 return new ResourceHandler(subResource, uriTemplate).match(result, httpMethod, mediaTypes, resourceContext, builder);
             } catch (Exception e) {
                 throw new RuntimeException(e);
