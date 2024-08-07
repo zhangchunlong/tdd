@@ -26,57 +26,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.Mockito.when;
 
-public class DefaultResourceMethodTest {
-
-    CallableResourceMethods resource;
-    ResourceContext context;
-    UriInfoBuilder builder;
-    UriInfo uriInfo;
-    MultivaluedHashMap<String, String> parameters;
-
-    private LastCall lastCall;
-    private SomeServiceInContext service;
-
-    record LastCall(String name, List<Object> arguments){
-    }
-
-    @BeforeEach
-    public void before() {
-        lastCall = null;
-        resource = (CallableResourceMethods) Proxy.newProxyInstance(this.getClass().getClassLoader(),
-                new Class[]{
-                        CallableResourceMethods.class}, (proxy, method, args) -> {
-                    lastCall = new LastCall(getMethodName(method.getName(),
-                            Arrays.stream(method.getParameters()).map(p -> p.getType()).toList()),
-                                    args !=null?List.of(args):List.of());
-                            return "getList".equals(method.getName())? new ArrayList<String>(): null;
-                        });
-
-        context = Mockito.mock(ResourceContext.class);
-        builder = Mockito.mock(UriInfoBuilder.class);
-        uriInfo = Mockito.mock(UriInfo.class);
-        parameters = new MultivaluedHashMap<>();
-
-        when(builder.getLastMatchedResource()).thenReturn(resource);
-        when(builder.createUriInfo()).thenReturn(uriInfo);
-        when(uriInfo.getPathParameters()).thenReturn(parameters);
-        when(uriInfo.getQueryParameters()).thenReturn(parameters);
-        service = Mockito.mock(SomeServiceInContext.class);
-        when(context.getResource(SomeServiceInContext.class)).thenReturn(service);
-    }
-
-    private String getMethodName(String name, List<? extends Class<?>> classes) {
-        return name +
-                "(" +
-                classes.stream().map(Class::getSimpleName).collect(Collectors.joining(",")) +
-                ")";
-    }
+public class DefaultResourceMethodTest extends InjectableCallerTest{
 
     @Test
     public void should_call_resource_method() throws NoSuchMethodException {
         DefaultResourceMethod resourceMethod = getResourceMethod("get");
         resourceMethod.call(context, builder);
-        assertEquals("get()", lastCall.name);
+        assertEquals("get()", lastCall.name());
     }
 
     @Test
@@ -99,62 +55,22 @@ public class DefaultResourceMethodTest {
         return new DefaultResourceMethod(CallableResourceMethods.class.getMethod(methodName, types));
     }
 
-    private void verifyResourceMethodCalled(String method, Class<?> type, String paramString, Object paramValue) throws NoSuchMethodException {
+    @Override
+    protected void callInjectable(String method, Class<?> type) throws NoSuchMethodException {
         DefaultResourceMethod resourceMethod = getResourceMethod(method, type);
-
-        parameters.put("param", List.of(paramString));
         resourceMethod.call(context, builder);
-
-        assertEquals(getMethodName(method, List.of(type)), lastCall.name);
-        assertEquals(List.of(paramValue), lastCall.arguments);
     }
 
-    record InjectableTypeTestCase(Class<?> type, String string, Object value){
-    }
-
-    @TestFactory
-    public List<DynamicTest> inject_convertable_types() {
-        List<DynamicTest> tests = new ArrayList<>();
-        List<InjectableTypeTestCase> typeCases = List.of(
-                new InjectableTypeTestCase(String.class, "string", "string"),
-                new InjectableTypeTestCase(int.class, "1", 1),
-                new InjectableTypeTestCase(double.class, "3.25", 3.25),
-                new InjectableTypeTestCase(float.class, "3.25", 3.25f),
-                new InjectableTypeTestCase(short.class, "128", (short)128),
-                new InjectableTypeTestCase(byte.class, "42", (byte)42),
-                new InjectableTypeTestCase(boolean.class, "true", true),
-                new InjectableTypeTestCase(BigDecimal.class, "12345", new BigDecimal("12345")),
-                new InjectableTypeTestCase(Converter.class, "Factory", Converter.Factory)
-                );
-
-        List<String> paramTypes = List.of("getPathParam", "getQueryParam");
-        for(String type: paramTypes)
-            for(InjectableTypeTestCase testCase: typeCases) {
-                tests.add(DynamicTest.dynamicTest("should inject " + testCase.type.getSimpleName()
-                + " to " + type, () -> {
-                    verifyResourceMethodCalled(type, testCase.type, testCase.string, testCase.value);
-                }));
-            }
-
-        return tests;
-    }
-
-    @TestFactory
-    public List<DynamicTest> inject_context_object() {
-        List<DynamicTest> tests = new ArrayList<>();
-        List<InjectableTypeTestCase> typeCases = List.of(
-                new InjectableTypeTestCase(SomeServiceInContext.class, "N/A", service),
-                new InjectableTypeTestCase(ResourceContext.class, "N/A", context),
-                new InjectableTypeTestCase(UriInfo.class, "N/A", uriInfo));
-
-        for(InjectableTypeTestCase testCase: typeCases) {
-            tests.add(DynamicTest.dynamicTest("should inject " + testCase.type.getSimpleName()
-                    + " to getContext", () -> {
-                verifyResourceMethodCalled("getContext", testCase.type, testCase.string, testCase.value);
-            }));
-        }
-
-        return tests;
+    @Override
+    protected Object initResource() {
+        return Proxy.newProxyInstance(this.getClass().getClassLoader(),
+                new Class[]{
+                        CallableResourceMethods.class}, (proxy, method, args) -> {
+                    lastCall = new LastCall(getMethodName(method.getName(),
+                            Arrays.stream(method.getParameters()).map(p -> p.getType()).toList()),
+                                    args !=null?List.of(args):List.of());
+                            return "getList".equals(method.getName())? new ArrayList<String>(): null;
+                        });
     }
 
     //TODO using default converters for path,query, matrix(uri) form, header, cookie(request)
