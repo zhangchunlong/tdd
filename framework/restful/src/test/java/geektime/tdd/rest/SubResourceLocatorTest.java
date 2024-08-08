@@ -13,17 +13,22 @@ import java.lang.reflect.Proxy;
 import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.fail;
 
 public class SubResourceLocatorTest extends InjectableCallerTest{
     UriTemplate.MatchResult result;
+    Map<String, String> matchedPathParameters = Map.of("param", "param");
 
     @BeforeEach
     public void before() {
         super.before();
         result = Mockito.mock(UriTemplate.MatchResult.class);
+        Mockito.when(result.getMatchedParameters()).thenReturn(matchedPathParameters);
     }
+
     @Override
     protected Object initResource() {
         return Proxy.newProxyInstance(this.getClass().getClassLoader(),
@@ -32,23 +37,29 @@ public class SubResourceLocatorTest extends InjectableCallerTest{
                     lastCall = new LastCall(getMethodName(method.getName(),
                             Arrays.stream(method.getParameters()).map(p -> p.getType()).toList()),
                             args !=null?List.of(args):List.of());
+                    if (method.getName().equals("throwWebApplicationException"))
+                        throw new WebApplicationException(300);
                     return new Message();
                 });
     }
 
     @Test
-    public void should_inject_path_param_to_sub_resource_method() throws NoSuchMethodException {
-        Class<String> type = String.class;
-        String method = "getPathParam";
-        String paramString = "path";
-        String paramValue = "path";
+    public void should_add_matched_path_parameter_to_builder() throws NoSuchMethodException {
+        parameters.put("param", List.of("param"));
+        callInjectable("getPathParam", String.class);
+        Mockito.verify(builder).addMatchedParameters(matchedPathParameters);
+    }
 
-        parameters.put("param", List.of(paramString));
-
-        callInjectable(method, type);
-
-        assertEquals(getMethodName(method, List.of(type)), lastCall.name());
-        assertEquals(List.of(paramValue), lastCall.arguments());
+    @Test
+    public void should_not_wrap_around_web_application_exception() throws NoSuchMethodException {
+        parameters.put("param", List.of("param"));
+        try {
+            callInjectable("throwWebApplicationException", String.class);
+        } catch (WebApplicationException e) {
+            assertEquals(300, e.getResponse().getStatus());
+        } catch (Exception e) {
+            fail();
+        }
     }
 
     @Override
@@ -120,6 +131,9 @@ public class SubResourceLocatorTest extends InjectableCallerTest{
 
         @Path("/message/")
         Message getContext(@Context UriInfo uriInfo);
+
+        @Path("/message/{param}")
+        Message throwWebApplicationException(@PathParam("param") String path);
     }
 
     static class Message {

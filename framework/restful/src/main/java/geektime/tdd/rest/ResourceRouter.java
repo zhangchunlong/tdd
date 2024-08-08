@@ -3,23 +3,17 @@ package geektime.tdd.rest;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.ws.rs.HttpMethod;
 import jakarta.ws.rs.Path;
-import jakarta.ws.rs.PathParam;
-import jakarta.ws.rs.QueryParam;
+import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.container.ResourceContext;
 import jakarta.ws.rs.core.GenericEntity;
 import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.Response;
-import jakarta.ws.rs.core.UriInfo;
 
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.lang.reflect.Parameter;
-import java.lang.reflect.Type;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import static geektime.tdd.rest.MethodInvoker.ValueConverter.singleValued;
 import static java.util.Arrays.stream;
 
 interface ResourceRouter {
@@ -230,13 +224,40 @@ class SubResourceLocators {
 
         @Override
         public Optional<ResourceRouter.ResourceMethod> match(UriTemplate.MatchResult result, String httpMethod, String[] mediaTypes, ResourceContext resourceContext, UriInfoBuilder builder) {
-            Object resource = builder.getLastMatchedResource();
             try {
+                builder.addMatchedParameters(result.getMatchedParameters());
                 Object subResource = MethodInvoker.invoke(method, resourceContext, builder);
-                return new ResourceHandler(subResource, uriTemplate).match(result, httpMethod, mediaTypes, resourceContext, builder);
-            } catch (Exception e) {
+                return new ResourceHandler(subResource, uriTemplate).match(excludePathParameters(result), httpMethod, mediaTypes, resourceContext, builder);
+            } catch (WebApplicationException e) {
+                throw e;
+            }
+            catch (Exception e) {
                 throw new RuntimeException(e);
             }
+        }
+
+        private UriTemplate.MatchResult excludePathParameters(UriTemplate.MatchResult result) {
+            return new UriTemplate.MatchResult() {
+                @Override
+                public String getMatched() {
+                    return result.getMatched();
+                }
+
+                @Override
+                public String getRemaining() {
+                    return result.getRemaining();
+                }
+
+                @Override
+                public Map<String, String> getMatchedParameters() {
+                    return new HashMap<>();
+                }
+
+                @Override
+                public int compareTo(UriTemplate.MatchResult o) {
+                    return result.compareTo(o);
+                }
+            };
         }
     }
 }
@@ -278,6 +299,7 @@ class ResourceHandler implements ResourceRouter.Resource {
     @Override
     public Optional<ResourceRouter.ResourceMethod> match(UriTemplate.MatchResult result, String httpMethod, String[] mediaTypes, ResourceContext resourceContext, UriInfoBuilder builder) {
         builder.addMatchedResource(resource.apply(resourceContext));
+        builder.addMatchedParameters(result.getMatchedParameters());
 
         String remaining = Optional.ofNullable(result.getRemaining()).orElse("");
         return resourceMethods.findResourceMethods(remaining, httpMethod)

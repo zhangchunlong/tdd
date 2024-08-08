@@ -19,6 +19,7 @@ public class StubResponseBuilder extends Response.ResponseBuilder {
         OutboundResponse response = Mockito.mock(OutboundResponse.class);
         when(response.getEntity()).thenReturn(entity);
         when(response.getStatus()).thenReturn(status);
+        when(response.getStatusInfo()).thenReturn(Response.Status.fromStatusCode(status));
 
         when(response.getGenericEntity()).thenReturn((GenericEntity) entity);
         when(response.getAllowedMethods()).thenReturn(allowed);
@@ -33,6 +34,7 @@ public class StubResponseBuilder extends Response.ResponseBuilder {
 
     @Override
     public Response.ResponseBuilder status(int status) {
+        this.status = status;
         return this;
     }
 

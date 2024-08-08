@@ -1,30 +1,19 @@
 package geektime.tdd.rest;
 
-import jakarta.ws.rs.GET;
-import jakarta.ws.rs.POST;
-import jakarta.ws.rs.PathParam;
-import jakarta.ws.rs.QueryParam;
+import jakarta.ws.rs.*;
 import jakarta.ws.rs.container.ResourceContext;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.GenericEntity;
-import jakarta.ws.rs.core.MultivaluedHashMap;
 import jakarta.ws.rs.core.UriInfo;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestFactory;
-import org.mockito.Mockito;
 
 import java.lang.reflect.Proxy;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.mockito.Mockito.when;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class DefaultResourceMethodTest extends InjectableCallerTest{
 
@@ -51,6 +40,18 @@ public class DefaultResourceMethodTest extends InjectableCallerTest{
                 resourceMethod.call(context, builder));
     }
 
+    @Test
+    public void should_not_wrap_around_web_application_exception() {
+        parameters.put("param", List.of("param"));
+        try {
+            callInjectable("throwWebApplicationException", String.class);
+        } catch (WebApplicationException e) {
+            assertEquals(300, e.getResponse().getStatus());
+        } catch (Exception e) {
+            fail();
+        }
+    }
+
     private DefaultResourceMethod getResourceMethod(String methodName, Class... types) throws NoSuchMethodException {
         return new DefaultResourceMethod(CallableResourceMethods.class.getMethod(methodName, types));
     }
@@ -69,8 +70,11 @@ public class DefaultResourceMethodTest extends InjectableCallerTest{
                     lastCall = new LastCall(getMethodName(method.getName(),
                             Arrays.stream(method.getParameters()).map(p -> p.getType()).toList()),
                                     args !=null?List.of(args):List.of());
-                            return "getList".equals(method.getName())? new ArrayList<String>(): null;
-                        });
+                    if (method.getName().equals("throwWebApplicationException"))
+                        throw new WebApplicationException(300);
+                    return "getList".equals(method.getName())? new ArrayList<String>(): null;
+        });
+
     }
 
     //TODO using default converters for path,query, matrix(uri) form, header, cookie(request)
@@ -148,6 +152,9 @@ public class DefaultResourceMethodTest extends InjectableCallerTest{
 
         @GET
         String getContext(@Context UriInfo uriInfo);
+
+        @GET
+        String throwWebApplicationException(@PathParam("param") String path);
     }
 }
 

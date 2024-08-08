@@ -3,6 +3,7 @@ package geektime.tdd.rest;
 import jakarta.ws.rs.container.ResourceContext;
 import jakarta.ws.rs.core.MultivaluedHashMap;
 import jakarta.ws.rs.core.UriInfo;
+import jakarta.ws.rs.ext.RuntimeDelegate;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.TestFactory;
@@ -24,6 +25,7 @@ public abstract class InjectableCallerTest {
     LastCall lastCall;
     SomeServiceInContext service;
     Object resource;
+    RuntimeDelegate delegate;
 
     @BeforeEach
     public void before() {
@@ -41,6 +43,10 @@ public abstract class InjectableCallerTest {
         when(uriInfo.getQueryParameters()).thenReturn(parameters);
         service = Mockito.mock(SomeServiceInContext.class);
         when(context.getResource(SomeServiceInContext.class)).thenReturn(service);
+
+        delegate = Mockito.mock(RuntimeDelegate.class);
+        RuntimeDelegate.setInstance(delegate);
+        when(delegate.createResponseBuilder()).thenReturn(new StubResponseBuilder());
     }
 
     private void verifyResourceMethodCalled(String method, Class<?> type, String paramString, Object paramValue) throws NoSuchMethodException {
