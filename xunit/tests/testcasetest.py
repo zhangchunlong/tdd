@@ -4,14 +4,18 @@ from src.testcase import WasRun, TestCase
 
 
 class TestCaseTest(TestCase):
-    def testRunning(self):
-        test = WasRun("testMethod")
-        assert(not test.wasRun)
-        test.run()
-        assert(test.wasRun)
+    def setUp(self):
+        self.test = WasRun("testMethod")
 
-# TODO: 调用测试方法
-# TODO: 调用测试方法之前调用setUp
+    def testRunning(self):
+        self.test.run()
+        assert(self.test.wasRun)
+
+    def testSetup(self):
+        self.test.run()
+        assert(self.test.wasSetUp)
+
+
 # TODO： 调用测试方法之后调用tearDown
 # TODO: 即使测试方法执行识别也会调用tearDown
 # TODO: 执行符合测试
@@ -19,3 +23,4 @@ class TestCaseTest(TestCase):
 
 
 TestCaseTest("testRunning").run()
+TestCaseTest("testSetup").run()
